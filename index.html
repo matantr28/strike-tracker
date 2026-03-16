@@ -1,0 +1,2124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STRIKE TRACKER — Israel Missile & Drone Incidents Since Oct 7, 2023</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<!-- noUiSlider CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.css"/>
+
+<style>
+:root {
+  --bg:       #080b0f;
+  --bg2:      #0d1117;
+  --bg3:      #111820;
+  --border:   #1e2d3d;
+  --border2:  #2a3f54;
+  --amber:    #e8a020;
+  --red:      #d93025;
+  --red2:     #ff4444;
+  --blue:     #3b82f6;
+  --cyan:     #00d4ff;
+  --green:    #22c55e;
+  --orange:   #f97316;
+  --purple:   #a855f7;
+  --text:     #c8d8e8;
+  --text2:    #7a8fa0;
+  --text3:    #3d5268;
+  --font-mono: 'Share Tech Mono', monospace;
+  --font-head: 'Barlow Condensed', sans-serif;
+  --font-body: 'Barlow', sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  height: 100vh;
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+/* ── SCANLINE OVERLAY ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── TOP NAV ── */
+#topbar {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: 52px;
+  background: rgba(8,11,15,0.95);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 0;
+  z-index: 1000;
+  backdrop-filter: blur(8px);
+}
+
+#logo {
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 20px;
+  border-right: 1px solid var(--border);
+  height: 100%;
+}
+
+#logo .pulse {
+  width: 10px; height: 10px;
+  background: var(--red2);
+  border-radius: 50%;
+  box-shadow: 0 0 0 0 rgba(217,48,37,0.6);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0   rgba(217,48,37,0.7); }
+  70%  { box-shadow: 0 0 0 10px rgba(217,48,37,0); }
+  100% { box-shadow: 0 0 0 0   rgba(217,48,37,0); }
+}
+
+#logo span {
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 18px;
+  letter-spacing: 3px;
+  color: #fff;
+}
+#logo span em {
+  color: var(--amber);
+  font-style: normal;
+}
+
+.nav-tabs {
+  display: flex; height: 100%;
+}
+.nav-tab {
+  padding: 0 24px;
+  height: 100%;
+  display: flex; align-items: center;
+  font-family: var(--font-head);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text2);
+  cursor: pointer;
+  border-right: 1px solid var(--border);
+  transition: all 0.2s;
+  position: relative;
+}
+.nav-tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+.nav-tab.active {
+  color: var(--amber);
+  background: rgba(232,160,32,0.05);
+}
+.nav-tab.active::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 2px; background: var(--amber);
+}
+
+.nav-right {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 16px;
+  padding-right: 20px;
+}
+#strike-counter {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text2);
+}
+#strike-counter span {
+  color: var(--red2);
+  font-size: 18px;
+  font-weight: bold;
+  vertical-align: middle;
+}
+
+#fetch-btn {
+  padding: 6px 16px;
+  background: transparent;
+  border: 1px solid var(--amber);
+  color: var(--amber);
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+#fetch-btn:hover {
+  background: rgba(232,160,32,0.1);
+  box-shadow: 0 0 12px rgba(232,160,32,0.3);
+}
+#fetch-btn:disabled {
+  opacity: 0.5; cursor: not-allowed;
+}
+#fetch-btn .spinner {
+  display: none;
+  width: 12px; height: 12px;
+  border: 2px solid transparent;
+  border-top-color: var(--amber);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── PAGES ── */
+.page { display: none; }
+.page.active { display: flex; }
+
+/* ── MAP PAGE ── */
+#page-map {
+  position: fixed; inset: 0; top: 52px;
+  flex-direction: row;
+}
+
+#sidebar {
+  width: 320px;
+  min-width: 320px;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  z-index: 10;
+}
+
+.sidebar-section {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-section:last-child { border-bottom: none; }
+
+.section-label {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-label::after {
+  content: ''; flex: 1; height: 1px;
+  background: var(--border);
+}
+
+/* Filters */
+.filter-group { margin-bottom: 14px; }
+.filter-group:last-child { margin-bottom: 0; }
+.filter-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text2);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.firer-btns {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.firer-btn {
+  padding: 4px 10px;
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid;
+  background: transparent;
+}
+.firer-btn[data-group="hamas"]   { border-color: #d93025; color: #d93025; }
+.firer-btn[data-group="hezbollah"]{ border-color: #f97316; color: #f97316; }
+.firer-btn[data-group="houthi"]  { border-color: #a855f7; color: #a855f7; }
+.firer-btn[data-group="iran"]    { border-color: #3b82f6; color: #3b82f6; }
+.firer-btn[data-group="pij"]     { border-color: #22c55e; color: #22c55e; }
+.firer-btn[data-group="unknown"] { border-color: #7a8fa0; color: #7a8fa0; }
+.firer-btn[data-group="all"]     { border-color: var(--amber); color: var(--amber); }
+.firer-btn.active { color: #fff !important; }
+.firer-btn[data-group="hamas"].active    { background: #d93025; }
+.firer-btn[data-group="hezbollah"].active{ background: #f97316; }
+.firer-btn[data-group="houthi"].active   { background: #a855f7; }
+.firer-btn[data-group="iran"].active     { background: #3b82f6; }
+.firer-btn[data-group="pij"].active      { background: #22c55e; }
+.firer-btn[data-group="unknown"].active  { background: #7a8fa0; }
+.firer-btn[data-group="all"].active      { background: var(--amber); }
+
+/* Slider */
+#date-slider {
+  margin: 16px 8px 8px;
+}
+.noUi-target {
+  background: var(--border);
+  border: none;
+  box-shadow: none;
+  height: 4px;
+}
+.noUi-connect { background: var(--amber); }
+.noUi-handle {
+  background: var(--amber);
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(232,160,32,0.5);
+  width: 14px !important; height: 14px !important;
+  top: -5px !important; right: -7px !important;
+  cursor: grab;
+}
+.noUi-handle::before,
+.noUi-handle::after { display: none; }
+.noUi-tooltip {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  color: var(--amber);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 6px;
+}
+
+.date-range-display {
+  display: flex; justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 8px;
+}
+
+/* Type filter */
+.type-checks {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.check-row {
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer;
+}
+.check-row input[type="checkbox"] {
+  appearance: none;
+  width: 14px; height: 14px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+}
+.check-row input[type="checkbox"]:checked {
+  background: var(--cyan);
+  border-color: var(--cyan);
+}
+.check-row input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  top: -1px; left: 2px;
+  font-size: 10px;
+  color: var(--bg);
+}
+.check-row label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text2);
+  cursor: pointer;
+}
+
+/* Strike list */
+#strike-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+#strike-list::-webkit-scrollbar { width: 4px; }
+#strike-list::-webkit-scrollbar-track { background: transparent; }
+#strike-list::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.strike-item {
+  padding: 10px 16px;
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.strike-item:hover {
+  background: rgba(255,255,255,0.03);
+  border-left-color: var(--amber);
+}
+.strike-item.highlighted {
+  background: rgba(232,160,32,0.08);
+  border-left-color: var(--amber);
+}
+.strike-item-date {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text3);
+  margin-bottom: 3px;
+}
+.strike-item-title {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+.strike-item-firer {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* Map */
+#map-container {
+  flex: 1;
+  position: relative;
+}
+#map {
+  width: 100%; height: 100%;
+  background: #1a2332;
+}
+
+
+/* Leaflet popup overrides */
+.leaflet-popup-content-wrapper {
+  background: rgba(13,17,23,0.97) !important;
+  border: 1px solid var(--border2) !important;
+  border-radius: 4px !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.8), 0 0 0 1px rgba(232,160,32,0.1) !important;
+  padding: 0 !important;
+  min-width: 280px;
+  max-width: 340px;
+}
+.leaflet-popup-content {
+  margin: 0 !important;
+  width: auto !important;
+}
+.leaflet-popup-tip-container { display: none; }
+.leaflet-popup-close-button {
+  color: var(--text2) !important;
+  right: 8px !important; top: 8px !important;
+  font-size: 18px !important;
+}
+.popup-inner {
+  padding: 16px;
+}
+.popup-date {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text3);
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+}
+.popup-title {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 16px;
+  color: #fff;
+  line-height: 1.3;
+  margin-bottom: 8px;
+}
+.popup-firer-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px;
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.popup-desc {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: 10px;
+  border-left: 2px solid var(--border2);
+  padding-left: 10px;
+}
+.popup-type-row {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 8px;
+}
+.popup-type-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text3);
+}
+.popup-type-val {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--cyan);
+}
+.popup-source {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text3);
+}
+.popup-source a {
+  color: var(--amber);
+  text-decoration: none;
+}
+.popup-source a:hover { text-decoration: underline; }
+
+/* Map overlays */
+#map-status {
+  position: absolute;
+  bottom: 16px; right: 16px;
+  background: rgba(8,11,15,0.9);
+  border: 1px solid var(--border);
+  padding: 8px 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text2);
+  z-index: 500;
+  pointer-events: none;
+}
+#visible-count {
+  position: absolute;
+  top: 16px; right: 16px;
+  background: rgba(8,11,15,0.9);
+  border: 1px solid var(--border);
+  padding: 8px 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text2);
+  z-index: 500;
+}
+#visible-count span { color: var(--red2); font-size: 16px; font-weight: bold; }
+
+/* ── STATS PAGE ── */
+#page-stats {
+  position: fixed; inset: 0; top: 52px;
+  flex-direction: column;
+  background: var(--bg);
+  overflow-y: auto;
+  padding: 32px;
+}
+#page-stats::-webkit-scrollbar { width: 6px; }
+#page-stats::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.stats-header {
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 42px;
+  letter-spacing: 4px;
+  color: #fff;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+.stats-sub {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text3);
+  margin-bottom: 40px;
+  letter-spacing: 2px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 40px;
+}
+.stat-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  padding: 20px 24px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 3px; height: 100%;
+}
+.stat-card.red::before   { background: var(--red); }
+.stat-card.amber::before { background: var(--amber); }
+.stat-card.blue::before  { background: var(--blue); }
+.stat-card.purple::before{ background: var(--purple); }
+.stat-card.green::before { background: var(--green); }
+.stat-card.cyan::before  { background: var(--cyan); }
+
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.stat-value {
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 48px;
+  line-height: 1;
+  color: #fff;
+}
+.stat-sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 4px;
+}
+
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 40px;
+}
+.chart-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  padding: 20px;
+}
+.chart-title {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text2);
+  margin-bottom: 20px;
+}
+.bar-chart { display: flex; flex-direction: column; gap: 10px; }
+.bar-row { display: flex; align-items: center; gap: 10px; }
+.bar-name {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text2);
+  width: 100px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.bar-track {
+  flex: 1; height: 20px;
+  background: var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  transition: width 1s ease;
+  position: relative;
+}
+.bar-fill::after {
+  content: attr(data-count);
+  position: absolute; right: 6px; top: 2px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: rgba(0,0,0,0.7);
+  font-weight: bold;
+}
+
+.timeline-chart {
+  position: relative;
+  height: 160px;
+  display: flex; align-items: flex-end;
+  gap: 2px;
+  padding-bottom: 24px;
+}
+.timeline-bar {
+  flex: 1;
+  background: var(--border2);
+  position: relative;
+  transition: all 0.3s;
+  cursor: pointer;
+  min-width: 4px;
+}
+.timeline-bar:hover { background: var(--amber); }
+.timeline-bar .tip {
+  display: none;
+  position: absolute;
+  bottom: 100%; left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text);
+  padding: 3px 6px;
+  white-space: nowrap;
+  z-index: 10;
+}
+.timeline-bar:hover .tip { display: block; }
+.timeline-x-labels {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  display: flex; justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text3);
+}
+
+.data-table {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  margin-bottom: 40px;
+}
+.table-header {
+  display: grid;
+  grid-template-columns: 110px 1fr 120px 90px 80px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+}
+.table-header-cell {
+  padding: 10px 14px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border-right: 1px solid var(--border);
+}
+.table-header-cell:last-child { border-right: none; }
+.table-body { max-height: 400px; overflow-y: auto; }
+.table-body::-webkit-scrollbar { width: 4px; }
+.table-body::-webkit-scrollbar-thumb { background: var(--border2); }
+.table-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 120px 90px 80px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  transition: background 0.1s;
+}
+.table-row:hover { background: rgba(255,255,255,0.03); }
+.table-cell {
+  padding: 10px 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text);
+  border-right: 1px solid rgba(255,255,255,0.03);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.table-cell:last-child { border-right: none; }
+.table-cell.date { color: var(--text2); font-size: 10px; }
+.table-cell.source a {
+  color: var(--amber);
+  text-decoration: none;
+  font-size: 10px;
+}
+
+/* Loading overlay */
+#loading-overlay {
+  position: fixed; inset: 0; top: 52px;
+  background: rgba(8,11,15,0.92);
+  z-index: 2000;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 20px;
+  backdrop-filter: blur(4px);
+}
+#loading-overlay.hidden { display: none; }
+
+.radar-ring {
+  width: 80px; height: 80px;
+  position: relative;
+}
+.radar-ring::before, .radar-ring::after {
+  content: '';
+  position: absolute; inset: 0;
+  border: 2px solid var(--amber);
+  border-radius: 50%;
+  animation: radar-expand 2s ease-out infinite;
+}
+.radar-ring::after { animation-delay: 1s; }
+@keyframes radar-expand {
+  0%   { transform: scale(0.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+.loading-text {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--amber);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+.loading-sub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 2px;
+  max-width: 400px;
+  text-align: center;
+  line-height: 1.8;
+}
+.progress-bar-wrap {
+  width: 300px; height: 3px;
+  background: var(--border);
+}
+.progress-bar-fill {
+  height: 100%;
+  background: var(--amber);
+  width: 0%;
+  transition: width 0.3s ease;
+  animation: progress-pulse 2s ease-in-out infinite;
+}
+@keyframes progress-pulse {
+  0%,100% { box-shadow: none; }
+  50% { box-shadow: 0 0 12px var(--amber); }
+}
+
+/* Firer color helpers */
+.color-hamas    { color: #d93025; }
+.color-hezbollah{ color: #f97316; }
+.color-houthi   { color: #a855f7; }
+.color-iran     { color: #3b82f6; }
+.color-pij      { color: #22c55e; }
+.color-unknown  { color: #7a8fa0; }
+
+.bg-hamas    { background: #d93025; }
+.bg-hezbollah{ background: #f97316; }
+.bg-houthi   { background: #a855f7; }
+.bg-iran     { background: #3b82f6; }
+.bg-pij      { background: #22c55e; }
+.bg-unknown  { background: #7a8fa0; }
+
+/* API error banner */
+#api-error {
+  position: fixed;
+  bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: rgba(217,48,37,0.15);
+  border: 1px solid var(--red);
+  padding: 12px 24px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #ff8080;
+  z-index: 3000;
+  max-width: 500px;
+  text-align: center;
+  display: none;
+}
+
+.actor-registry-table { width:100%; border-collapse:collapse; }
+.actor-registry-table th {
+  font-family:var(--font-mono); font-size:10px; color:var(--text3);
+  letter-spacing:2px; text-transform:uppercase;
+  padding:8px 12px; border-bottom:1px solid var(--border);
+  text-align:left; background:var(--bg3);
+}
+.actor-registry-table td {
+  padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.03);
+  font-family:var(--font-mono); font-size:12px; color:var(--text);
+  vertical-align:middle;
+}
+.actor-swatch {
+  display:inline-block; width:12px; height:12px;
+  border-radius:50%; margin-right:8px; vertical-align:middle;
+}
+.actor-del-btn {
+  padding:3px 10px; background:transparent;
+  border:1px solid var(--red); color:var(--red);
+  font-family:var(--font-mono); font-size:10px; cursor:pointer;
+  transition:all 0.15s;
+}
+.actor-del-btn:hover { background:rgba(217,48,37,0.15); }
+.actor-default-badge {
+  padding:1px 6px; font-size:9px; letter-spacing:1px;
+  background:rgba(255,255,255,0.05); color:var(--text3);
+  border:1px solid var(--border); font-family:var(--font-mono);
+}
+.scan-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:4px; margin-top:8px; }
+.scan-cell {
+  padding:4px 6px; font-family:var(--font-mono); font-size:9px;
+  border:1px solid var(--border); text-align:center;
+  background:var(--bg3); color:var(--text3); position:relative;
+  transition:all 0.3s;
+}
+.scan-cell.done   { background:rgba(34,197,94,0.1);  border-color:#22c55e; color:#22c55e; }
+.scan-cell.active { background:rgba(232,160,32,0.15); border-color:var(--amber); color:var(--amber);
+  box-shadow:0 0 8px rgba(232,160,32,0.3); }
+.scan-cell.error  { background:rgba(217,48,37,0.1);  border-color:var(--red); color:var(--red); }
+
+/* Responsive tweaks */
+@media (max-width: 900px) {
+  #sidebar { width: 260px; min-width: 260px; }
+  .charts-row { grid-template-columns: 1fr; }
+  .table-header, .table-row { grid-template-columns: 90px 1fr 100px 80px; }
+  .table-header-cell:nth-child(5),
+  .table-cell:nth-child(5) { display: none; }
+}
+
+/* ── API Key Modal ── */
+#apikey-modal {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 9000;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(6px);
+}
+#apikey-modal.hidden { display: none; }
+.apikey-box {
+  background: var(--bg2);
+  border: 1px solid var(--amber);
+  padding: 36px 40px;
+  max-width: 500px; width: 90%;
+  box-shadow: 0 0 40px rgba(232,160,32,0.2);
+}
+.apikey-title {
+  font-family: var(--font-head);
+  font-weight: 900; font-size: 22px;
+  letter-spacing: 3px; color: #fff;
+  margin-bottom: 6px; text-transform: uppercase;
+}
+.apikey-sub {
+  font-family: var(--font-mono);
+  font-size: 11px; color: var(--text2);
+  margin-bottom: 20px; line-height: 1.7;
+}
+.apikey-sub a { color: var(--amber); text-decoration: none; }
+.apikey-input {
+  width: 100%; padding: 10px 14px;
+  background: var(--bg3); border: 1px solid var(--border2);
+  color: var(--text); font-family: var(--font-mono); font-size: 13px;
+  margin-bottom: 14px; letter-spacing: 1px;
+}
+.apikey-input:focus { outline: none; border-color: var(--amber); }
+.apikey-save {
+  width: 100%; padding: 12px;
+  background: var(--amber); border: none;
+  color: #000; font-family: var(--font-head);
+  font-weight: 900; font-size: 15px;
+  letter-spacing: 2px; text-transform: uppercase;
+  cursor: pointer; transition: all 0.2s;
+}
+.apikey-save:hover { background: #ffb830; }
+.apikey-err {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--red2); margin-top: 8px; display: none;
+}
+#apikey-indicator {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 20px; cursor: pointer;
+  border-left: 1px solid var(--border);
+  height: 100%;
+}
+#apikey-indicator:hover { background: rgba(255,255,255,0.03); }
+.key-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--red2); flex-shrink: 0;
+}
+.key-dot.set { background: var(--green); }
+#apikey-indicator span {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text2); white-space: nowrap;
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div id="logo">
+    <div class="pulse"></div>
+    <span>STRIKE<em>TRACK</em></span>
+  </div>
+  <div class="nav-tabs">
+    <div class="nav-tab active" data-page="map" onclick="showPage('map')">⬡ LIVE MAP</div>
+    <div class="nav-tab" data-page="stats" onclick="showPage('stats')">◈ OVERVIEW & DATA</div>
+  </div>
+  <div class="nav-right">
+    <div id="strike-counter">INCIDENTS LOADED: <span id="total-count">0</span></div>
+    <div id="apikey-indicator" onclick="showKeyModal()" title="Click to set API key">
+      <div class="key-dot" id="key-dot"></div>
+      <span id="key-label">NO API KEY</span>
+    </div>
+    <button id="fetch-btn" onclick="fetchStrikes()">
+      <span class="spinner" id="btn-spinner"></span>
+      <span id="btn-text">⟳ SCAN INTEL</span>
+    </button>
+  </div>
+</div>
+
+<!-- LOADING OVERLAY -->
+<div id="loading-overlay" class="hidden">
+  <div class="radar-ring"></div>
+  <div class="loading-text">SCANNING INTELLIGENCE SOURCES</div>
+  <div class="loading-sub" id="loading-detail">Querying open-source databases and news archives for missile and drone strikes on Israeli territory since October 7, 2023…</div>
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-fill" id="progress-fill"></div>
+  </div>
+</div>
+
+<!-- MAP PAGE -->
+<div id="page-map" class="page active">
+  <div id="sidebar">
+    <!-- Firer filter — rendered dynamically from ACTORS -->
+    <div class="sidebar-section">
+      <div class="section-label">FILTER BY SOURCE</div>
+      <div class="firer-btns" id="firer-btns-container"></div>
+    </div>
+
+    <!-- Type filter -->
+    <div class="sidebar-section">
+      <div class="section-label">WEAPON TYPE</div>
+      <div class="type-checks">
+        <label class="check-row">
+          <input type="checkbox" checked onchange="updateFilters()" data-type="ballistic_missile"> <label>Ballistic Missile</label>
+        </label>
+        <label class="check-row">
+          <input type="checkbox" checked onchange="updateFilters()" data-type="cruise_missile"> <label>Cruise Missile</label>
+        </label>
+        <label class="check-row">
+          <input type="checkbox" checked onchange="updateFilters()" data-type="rocket"> <label>Rockets / Mortar</label>
+        </label>
+        <label class="check-row">
+          <input type="checkbox" checked onchange="updateFilters()" data-type="drone"> <label>Drone / UAV</label>
+        </label>
+        <label class="check-row">
+          <input type="checkbox" checked onchange="updateFilters()" data-type="mixed"> <label>Mixed / Barrage</label>
+        </label>
+      </div>
+    </div>
+
+    <!-- Date slider -->
+    <div class="sidebar-section">
+      <div class="section-label">DATE RANGE</div>
+      <div id="date-slider"></div>
+      <div class="date-range-display">
+        <span id="date-from">Oct 7, 2023</span>
+        <span id="date-to">Today</span>
+      </div>
+    </div>
+
+    <!-- Strike list -->
+    <div class="section-label" style="padding: 12px 16px 0; margin-bottom:0;">
+      INCIDENT LIST <span id="list-count" style="color:var(--amber);font-family:var(--font-mono);font-size:11px;"></span>
+    </div>
+    <div id="strike-list"></div>
+  </div>
+
+  <div id="map-container">
+    <div id="map"></div>
+    <div id="visible-count">SHOWING <span id="vis-num">0</span> INCIDENTS</div>
+    <div id="map-status">AWAITING INTEL SCAN</div>
+  </div>
+</div>
+
+<!-- STATS PAGE -->
+<div id="page-stats" class="page">
+  <div class="stats-header">INTELLIGENCE OVERVIEW</div>
+  <div class="stats-sub">// AGGREGATED STRIKE DATA — ISRAEL — OCT 7, 2023 TO PRESENT</div>
+
+  <!-- Dynamic stat cards rendered by JS -->
+  <div class="stats-grid" id="stat-cards"></div>
+
+  <div class="charts-row">
+    <div class="chart-box">
+      <div class="chart-title">Incidents by Actor</div>
+      <div class="bar-chart" id="actor-chart"></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">Incidents by Weapon Type</div>
+      <div class="bar-chart" id="type-chart"></div>
+    </div>
+  </div>
+
+  <div class="chart-box" style="margin-bottom:32px;">
+    <div class="chart-title">Timeline — Incidents Per Month</div>
+    <div class="timeline-chart" id="timeline-chart">
+      <div class="timeline-x-labels" id="timeline-x"></div>
+    </div>
+  </div>
+
+  <!-- ── ACTOR MANAGEMENT ── -->
+  <div class="chart-title" style="margin-bottom:12px;">THREAT ACTOR REGISTRY</div>
+  <div id="actor-registry" style="margin-bottom:32px;"></div>
+
+  <div class="chart-box" style="margin-bottom:32px;">
+    <div class="chart-title">ADD NEW ACTOR</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:10px;align-items:end;margin-top:12px;">
+      <div>
+        <div class="filter-label">ACTOR KEY (no spaces)</div>
+        <input id="new-actor-key" placeholder="e.g. hamas_sinai" style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:8px;font-family:var(--font-mono);font-size:12px;">
+      </div>
+      <div>
+        <div class="filter-label">DISPLAY NAME</div>
+        <input id="new-actor-label" placeholder="e.g. Hamas Sinai" style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:8px;font-family:var(--font-mono);font-size:12px;">
+      </div>
+      <div>
+        <div class="filter-label">COLOR</div>
+        <input id="new-actor-color" type="color" value="#ff6600" style="width:100%;height:34px;background:var(--bg);border:1px solid var(--border2);cursor:pointer;">
+      </div>
+      <div>
+        <div class="filter-label">SEARCH HINT (optional)</div>
+        <input id="new-actor-hint" placeholder="e.g. Sinai Peninsula rockets" style="width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:8px;font-family:var(--font-mono);font-size:12px;">
+      </div>
+      <button onclick="addActor()" style="padding:8px 18px;background:var(--amber);border:none;color:#000;font-family:var(--font-head);font-weight:700;font-size:13px;letter-spacing:1px;cursor:pointer;white-space:nowrap;">+ ADD</button>
+    </div>
+    <div id="actor-add-msg" style="font-family:var(--font-mono);font-size:11px;margin-top:8px;color:var(--green);display:none;"></div>
+  </div>
+
+  <!-- Full data table -->
+  <div class="chart-title">FULL INCIDENT LOG</div>
+  <div class="data-table" style="margin-top:12px;">
+    <div class="table-header">
+      <div class="table-header-cell">DATE</div>
+      <div class="table-header-cell">DESCRIPTION</div>
+      <div class="table-header-cell">LOCATION</div>
+      <div class="table-header-cell">ACTOR</div>
+      <div class="table-header-cell">SOURCE</div>
+    </div>
+    <div class="table-body" id="full-table"></div>
+  </div>
+</div>
+
+<!-- API Error banner -->
+<div id="api-error"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════
+let allStrikes = [];
+let filteredStrikes = [];
+let markers = [];
+let map;
+let sliderInstance;
+let activeFirer = 'all';
+let dateRange = [new Date('2023-10-07'), new Date()];
+const START_DATE = new Date('2023-10-07');
+const END_DATE   = new Date();
+
+// ═══════════════════════════════════════════════════════════
+//  BUILT-IN SEED DATA (shown immediately, more added by AI)
+// ═══════════════════════════════════════════════════════════
+const SEED_STRIKES = [
+  // ── IRAN DIRECT ATTACKS ──
+  {
+    id:'ir1', date:'2024-04-13', title:'Iran launches historic direct attack on Israel',
+    description:'Iran fired over 300 projectiles at Israel including more than 120 ballistic missiles, 30 cruise missiles, and around 170 drones — the first direct attack from Iranian soil. Israel, the US, UK, Jordan, and France intercepted nearly all. The attack came in response to a suspected Israeli airstrike on the Iranian consulate in Damascus on April 1.',
+    location:'Nationwide (multiple interceptions)', lat:31.5, lng:34.9,
+    firer:'iran', type:'mixed',
+    source:'BBC News', sourceUrl:'https://www.bbc.com/news/world-middle-east-68812928'
+  },
+  {
+    id:'ir2', date:'2024-10-01', title:'Iran fires ~200 ballistic missiles at Israel',
+    description:'Iran launched approximately 180–200 Fattah-1 and Emad ballistic missiles at Israel in a retaliatory strike following the deaths of Hezbollah leader Hassan Nasrallah and Hamas leader Ismail Haniyeh. Most were intercepted by Israel\'s Arrow system and US warships. Some projectiles landed in the West Bank and central Israel.',
+    location:'Central & Southern Israel', lat:31.8, lng:34.8,
+    firer:'iran', type:'ballistic_missile',
+    source:'Reuters', sourceUrl:'https://www.reuters.com/world/middle-east/iran-fires-missiles-israel-2024-10-01/'
+  },
+  // ── HOUTHI ──
+  {
+    id:'ho1', date:'2023-10-27', title:'Houthis fire first ballistic missile toward Israel',
+    description:'Yemen\'s Houthis launched a ballistic missile toward Israel in solidarity with Hamas. The Israeli Air Force intercepted it over the Red Sea with an Arrow-3 system — the first operational use of Arrow-3 in combat.',
+    location:'Southern Israel (intercepted)', lat:29.9, lng:34.8,
+    firer:'houthi', type:'ballistic_missile',
+    source:'Times of Israel', sourceUrl:'https://www.timesofisrael.com/arrow-3-intercepts-ballistic-missile-fired-from-yemen-idf/'
+  },
+  {
+    id:'ho2', date:'2024-07-19', title:'Houthi drone strikes Tel Aviv, kills one',
+    description:'A Houthi Shahed-style UAV slipped through Israeli air defenses and struck a building in central Tel Aviv, killing one person and wounding several others. The attack was one of the most significant Houthi strikes to hit inside Israel proper.',
+    location:'Tel Aviv', lat:32.08, lng:34.78,
+    firer:'houthi', type:'drone',
+    source:'Al Jazeera', sourceUrl:'https://www.aljazeera.com/news/2024/7/19/houthi-drone-kills-one-in-tel-aviv'
+  },
+  {
+    id:'ho3', date:'2024-09-15', title:'Houthi hypersonic missile reaches central Israel',
+    description:'The Houthis claimed to have fired a "Paleh" hypersonic ballistic missile at Israel. The IDF acknowledged a projectile had fallen in central Israel. Israeli authorities said defenses failed to intercept it.',
+    location:'Central Israel', lat:31.9, lng:34.85,
+    firer:'houthi', type:'ballistic_missile',
+    source:'Jerusalem Post', sourceUrl:'https://www.jpost.com/breaking-news/article-817990'
+  },
+  {
+    id:'ho4', date:'2024-12-21', title:'Houthi missile hits Tel Aviv area amid ongoing campaign',
+    description:'A Houthi ballistic missile landed in the Tel Aviv metropolitan area. Sirens sounded across central Israel. One person was reported wounded. Israel subsequently launched retaliatory strikes on Houthi positions in Yemen.',
+    location:'Tel Aviv area', lat:32.06, lng:34.80,
+    firer:'houthi', type:'ballistic_missile',
+    source:'CNN', sourceUrl:'https://edition.cnn.com/2024/12/21/middleeast/houthi-missile-tel-aviv'
+  },
+  // ── HEZBOLLAH ──
+  {
+    id:'hb1', date:'2023-10-08', title:'Hezbollah opens northern front — rockets into Shebaa Farms',
+    description:'Hezbollah fired anti-tank missiles and artillery rockets at Israeli positions in the Shebaa Farms area, opening a second front within 24 hours of Hamas\'s October 7 massacre. This began an 11-month "war of attrition" along the Lebanese border.',
+    location:'Shebaa Farms / Northern border', lat:33.2, lng:35.6,
+    firer:'hezbollah', type:'rocket',
+    source:'Al Jazeera', sourceUrl:'https://www.aljazeera.com/news/2023/10/8/hezbollah-opens-fire-on-israel'
+  },
+  {
+    id:'hb2', date:'2024-01-06', title:'Hezbollah kills Radwan commander in targeted airstrike — retaliates with barrages',
+    description:'Following the targeted killing of a senior Hezbollah commander, Hezbollah fired more than 40 rockets and anti-tank missiles at multiple Israeli towns and military posts in the Galilee, injuring several civilians.',
+    location:'Upper Galilee (Kiryat Shmona, Metula, Avivim)', lat:33.07, lng:35.57,
+    firer:'hezbollah', type:'rocket',
+    source:'Haaretz', sourceUrl:'https://www.haaretz.com/israel-news/2024-01-06/hezbollah-rockets-galilee'
+  },
+  {
+    id:'hb3', date:'2024-04-06', title:'Hezbollah fires drone barrage; one drone hits Acre hospital',
+    description:'Hezbollah launched a salvo of drones and anti-tank missiles. One drone penetrated deeper than usual, reaching Acre (Akko) on the Mediterranean coast and striking near a hospital, wounding at least 14 people.',
+    location:'Acre (Akko)', lat:32.93, lng:35.08,
+    firer:'hezbollah', type:'drone',
+    source:'Times of Israel', sourceUrl:'https://www.timesofisrael.com/hezbollah-drone-hits-near-acre-hospital/'
+  },
+  {
+    id:'hb4', date:'2024-07-27', title:'Hezbollah rocket hits Majdal Shams, kills 12 children',
+    description:'A Hezbollah Falaq-1 rocket struck a soccer field in the Druze town of Majdal Shams in the Golan Heights, killing 12 children and teenagers and wounding dozens more. The attack provoked widespread outrage and Israeli escalation.',
+    location:'Majdal Shams, Golan Heights', lat:33.26, lng:35.77,
+    firer:'hezbollah', type:'rocket',
+    source:'BBC', sourceUrl:'https://www.bbc.com/news/articles/c4ngdln5lllo'
+  },
+  {
+    id:'hb5', date:'2024-09-22', title:'Mass drone & rocket barrage on Haifa as IDF escalates',
+    description:'Hezbollah launched over 140 rockets and drones targeting Haifa and surrounding areas in response to Israeli airstrikes that killed several Hezbollah commanders. Air-raid sirens sounded across northern Israel.',
+    location:'Haifa Bay area', lat:32.81, lng:35.00,
+    firer:'hezbollah', type:'mixed',
+    source:'Reuters', sourceUrl:'https://www.reuters.com/world/middle-east/hezbollah-rockets-haifa-2024-09-22/'
+  },
+  // ── HAMAS ──
+  {
+    id:'hm1', date:'2023-10-07', title:'Hamas launches 2,500-rocket barrage — Operation Al-Aqsa Storm',
+    description:'Hamas and allied groups fired an estimated 2,500 rockets and mortars into Israel within minutes of the dawn ground assault. The Iron Dome intercepted hundreds but rockets struck Be\'er Sheva, Ashkelon, Sderot, Tel Aviv, and communities around Gaza.',
+    location:'Southern Israel / Tel Aviv', lat:31.25, lng:34.5,
+    firer:'hamas', type:'mixed',
+    source:'IDF Spokesperson', sourceUrl:'https://www.idf.il/en/mini-sites/hamas-israel-war/'
+  },
+  {
+    id:'hm2', date:'2023-10-17', title:'Hamas rockets strike Beersheba amid Al-Ahli hospital blast',
+    description:'During the crisis surrounding the Al-Ahli hospital explosion, Hamas fired sustained barrages at Beersheba and Ashdod. A rocket struck a residential street in Beersheba, causing casualties.',
+    location:'Beersheba', lat:31.25, lng:34.79,
+    firer:'hamas', type:'rocket',
+    source:'Associated Press', sourceUrl:'https://apnews.com/article/israel-hamas-war-rockets-beersheba'
+  },
+  {
+    id:'hm3', date:'2023-11-04', title:'Hamas fires anti-tank missile — kills three Israeli soldiers at border',
+    description:'Hamas gunmen used an anti-tank missile to target an IDF vehicle near the Kerem Shalom crossing, killing three soldiers. Hamas claimed it as part of operations to resist the IDF ground offensive.',
+    location:'Kerem Shalom, Gaza border', lat:31.21, lng:34.29,
+    firer:'hamas', type:'rocket',
+    source:'Ynet News', sourceUrl:'https://www.ynetnews.com/article/0,7340,L-5636420,00.html'
+  },
+  {
+    id:'hm4', date:'2024-02-11', title:'Hamas fires rockets during IDF Rafah operation',
+    description:'Hamas launched rockets from Rafah toward communities in the Eshkol and Sha\'ar HaNegev regions. The IDF reported Iron Dome intercepted most but some shrapnel landed in residential areas.',
+    location:'Eshkol / Sha\'ar HaNegev region', lat:31.3, lng:34.4,
+    firer:'hamas', type:'rocket',
+    source:'Times of Israel', sourceUrl:'https://www.timesofisrael.com/hamas-rockets-eshkol'
+  },
+  // ── PIJ ──
+  {
+    id:'pj1', date:'2023-10-10', title:'Palestinian Islamic Jihad fires rockets from Lebanon',
+    description:'PIJ launched rockets from Lebanese territory into northern Israel, opening a separate Lebanese-front attack and testing Israel\'s readiness on multiple axes simultaneously.',
+    location:'Nahariya / Western Galilee', lat:33.0, lng:35.09,
+    firer:'pij', type:'rocket',
+    source:'Reuters', sourceUrl:'https://www.reuters.com/world/middle-east/islamic-jihad-fires-from-lebanon/'
+  },
+  {
+    id:'pj2', date:'2024-03-12', title:'PIJ launches rocket barrage from Gaza in coordination with Hamas',
+    description:'Palestinian Islamic Jihad launched a joint rocket barrage from southern Gaza toward Sderot and the Netivot area, claiming coordination with Hamas as part of an escalation response.',
+    location:'Sderot / Netivot area', lat:31.52, lng:34.6,
+    firer:'pij', type:'rocket',
+    source:'Al Jazeera', sourceUrl:'https://www.aljazeera.com/news/2024/3/12/pij-rockets-gaza'
+  },
+];
+
+// ═══════════════════════════════════════════════════════════
+//  COLOR & ICON HELPERS
+// ═══════════════════════════════════════════════════════════
+// ── ACTORS: single source of truth ──
+// Loaded from localStorage on boot so user additions persist across sessions
+const DEFAULT_ACTORS = [
+  { key:'hamas',     label:'Hamas',     color:'#d93025', hint:'Gaza Strip rocket/missile/drone attacks' },
+  { key:'hezbollah', label:'Hezbollah', color:'#f97316', hint:'Lebanon border rocket/missile/drone/anti-tank attacks' },
+  { key:'houthi',    label:'Houthis',   color:'#a855f7', hint:'Yemen long-range ballistic missiles and Shahed drones toward Israel' },
+  { key:'iran',      label:'Iran',      color:'#3b82f6', hint:'Direct IRGC ballistic missile and drone strikes from Iranian territory' },
+  { key:'pij',       label:'PIJ',       color:'#22c55e', hint:'Palestinian Islamic Jihad rockets and missiles from Gaza or Lebanon' },
+  { key:'unknown',   label:'Unknown',   color:'#7a8fa0', hint:'Unattributed or unclear origin aerial attacks on Israel' },
+];
+
+let ACTORS = loadActors();
+
+function loadActors() {
+  try {
+    const saved = localStorage.getItem('striketrack_actors');
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(DEFAULT_ACTORS));
+}
+
+function saveActors() {
+  try { localStorage.setItem('striketrack_actors', JSON.stringify(ACTORS)); } catch(e) {}
+}
+
+// Dynamic lookup helpers — always reflect current ACTORS array
+function getColor(key) {
+  const a = ACTORS.find(x => x.key === key);
+  return a ? a.color : '#7a8fa0';
+}
+function getLabel(key) {
+  const a = ACTORS.find(x => x.key === key);
+  return a ? a.label : key;
+}
+
+// Legacy aliases for compatibility with existing code
+const FIRER_COLORS = new Proxy({}, { get: (_, k) => getColor(k) });
+const FIRER_LABELS = new Proxy({}, { get: (_, k) => getLabel(k) });
+const TYPE_ICONS = {
+  ballistic_missile: '🚀', cruise_missile: '✈', rocket: '💥',
+  drone: '🛸', mixed: '🔴'
+};
+
+function makeIcon(firer, type) {
+  const color = FIRER_COLORS[firer] || '#7a8fa0';
+  const emoji = TYPE_ICONS[type] || '💥';
+  return L.divIcon({
+    className: '',
+    html: `<div style="
+      width:28px;height:28px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+      background:${color};border:2px solid rgba(255,255,255,0.3);
+      box-shadow:0 0 12px ${color}88,0 2px 6px rgba(0,0,0,0.5);
+      display:flex;align-items:center;justify-content:center;
+    "><div style="transform:rotate(45deg);font-size:11px;line-height:1;">${emoji}</div></div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 28],
+    popupAnchor: [0, -30]
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MAP INIT
+// ═══════════════════════════════════════════════════════════
+function initMap() {
+  map = L.map('map', { zoomControl: false, center: [31.5, 34.8], zoom: 7 });
+
+  // Try multiple tile providers in order — first one to load wins
+  const tileProviders = [
+    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  ];
+
+  let tileLoaded = false;
+  let activeLayer = null;
+
+  function tryTile(index) {
+    if (index >= tileProviders.length) {
+      // All providers failed — draw a plain dark canvas background so map still works
+      document.getElementById('map').style.background = '#1a2332';
+      document.getElementById('map-status').textContent = 'MAP TILES UNAVAILABLE — PINS STILL SHOWN';
+      return;
+    }
+    const url = tileProviders[index];
+    const layer = L.tileLayer(url, {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19,
+      errorTileUrl: ''
+    });
+
+    let tilesAttempted = 0;
+    let tilesErrored = 0;
+
+    layer.on('tileload', () => {
+      if (!tileLoaded) {
+        tileLoaded = true;
+        activeLayer = layer;
+        // Apply dark filter to the tile pane only (not the whole map)
+        const tilePanes = document.querySelectorAll('.leaflet-tile-pane');
+        tilePanes.forEach(p => {
+          p.style.filter = 'invert(1) hue-rotate(200deg) brightness(0.75) saturate(0.6) contrast(1.1)';
+        });
+      }
+    });
+
+    layer.on('tileerror', () => {
+      tilesErrored++;
+      tilesAttempted++;
+      // If first few tiles all error, try next provider
+      if (!tileLoaded && tilesErrored >= 2 && tilesAttempted <= 4) {
+        map.removeLayer(layer);
+        tryTile(index + 1);
+      }
+    });
+
+    layer.addTo(map);
+  }
+
+  tryTile(0);
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DATE SLIDER
+// ═══════════════════════════════════════════════════════════
+function initSlider() {
+  const el = document.getElementById('date-slider');
+  const start = START_DATE.getTime();
+  const end   = END_DATE.getTime();
+  sliderInstance = noUiSlider.create(el, {
+    start: [start, end],
+    connect: true,
+    range: { min: start, max: end },
+    tooltips: [
+      { to: v => formatDate(new Date(+v)), from: Number },
+      { to: v => formatDate(new Date(+v)), from: Number }
+    ],
+    step: 86400000
+  });
+  sliderInstance.on('update', ([a, b]) => {
+    dateRange = [new Date(+a), new Date(+b)];
+    document.getElementById('date-from').textContent = formatDate(dateRange[0]);
+    document.getElementById('date-to').textContent   = formatDate(dateRange[1]);
+    updateFilters();
+  });
+}
+
+function formatDate(d) {
+  return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  FILTERS
+// ═══════════════════════════════════════════════════════════
+function setFirerFilter(group) {
+  activeFirer = group;
+  document.querySelectorAll('.firer-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.group === group ||
+      (group !== 'all' && b.dataset.group === 'all' && false));
+  });
+  // ensure only the clicked one is active
+  document.querySelectorAll('.firer-btn').forEach(b => {
+    b.classList.remove('active');
+  });
+  document.querySelector(`.firer-btn[data-group="${group}"]`).classList.add('active');
+  updateFilters();
+}
+
+function getActiveTypes() {
+  return Array.from(document.querySelectorAll('[data-type]'))
+    .filter(c => c.checked)
+    .map(c => c.dataset.type);
+}
+
+function updateFilters() {
+  const types = getActiveTypes();
+  filteredStrikes = allStrikes.filter(s => {
+    if (activeFirer !== 'all' && s.firer !== activeFirer) return false;
+    if (!types.includes(s.type)) return false;
+    const d = new Date(s.date);
+    if (d < dateRange[0] || d > dateRange[1]) return false;
+    return true;
+  });
+  renderMarkers();
+  renderStrikeList();
+  document.getElementById('vis-num').textContent = filteredStrikes.length;
+  document.getElementById('list-count').textContent = `(${filteredStrikes.length})`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MARKERS
+// ═══════════════════════════════════════════════════════════
+function renderMarkers() {
+  if (typeof L === 'undefined' || !map) return;
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+  filteredStrikes.forEach(s => {
+    const m = L.marker([s.lat, s.lng], { icon: makeIcon(s.firer, s.type) })
+      .bindPopup(buildPopup(s), { maxWidth: 340, minWidth: 280 })
+      .addTo(map);
+    m.strikeId = s.id;
+    markers.push(m);
+  });
+}
+
+function buildPopup(s) {
+  const color = FIRER_COLORS[s.firer] || '#7a8fa0';
+  const label = FIRER_LABELS[s.firer] || 'Unknown';
+  const typeLabel = s.type.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+  return `<div class="popup-inner">
+    <div class="popup-date">📅 ${new Date(s.date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div>
+    <div class="popup-title">${s.title}</div>
+    <div class="popup-firer-badge" style="background:${color}22;border:1px solid ${color};color:${color};">
+      ⚡ ${label}
+    </div>
+    <div class="popup-type-row">
+      <span class="popup-type-label">WEAPON:</span>
+      <span class="popup-type-val">${typeLabel}</span>
+    </div>
+    <div class="popup-desc">${s.description}</div>
+    <div class="popup-source">
+      📰 SOURCE: <a href="${s.sourceUrl}" target="_blank">${s.source}</a>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SIDEBAR LIST
+// ═══════════════════════════════════════════════════════════
+function renderStrikeList() {
+  const list = document.getElementById('strike-list');
+  const sorted = [...filteredStrikes].sort((a,b) => new Date(b.date)-new Date(a.date));
+  list.innerHTML = sorted.map(s => {
+    const color = FIRER_COLORS[s.firer] || '#7a8fa0';
+    const label = FIRER_LABELS[s.firer] || '?';
+    return `<div class="strike-item" data-id="${s.id}" onclick="focusStrike('${s.id}')">
+      <div class="strike-item-date">${new Date(s.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div>
+      <div class="strike-item-title">${s.title}</div>
+      <span class="strike-item-firer" style="background:${color}22;border:1px solid ${color};color:${color};">${label}</span>
+    </div>`;
+  }).join('');
+}
+
+function focusStrike(id) {
+  const s = allStrikes.find(x => x.id === id);
+  if (!s) return;
+  map.setView([s.lat, s.lng], 10, { animate: true });
+  const m = markers.find(x => x.strikeId === id);
+  if (m) setTimeout(() => m.openPopup(), 500);
+  document.querySelectorAll('.strike-item').forEach(el => {
+    el.classList.toggle('highlighted', el.dataset.id === id);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  STATS PAGE
+// ═══════════════════════════════════════════════════════════
+function renderStats() {
+  const total = allStrikes.length;
+  const byFirer = {};
+  const byType  = {};
+  const byMonth = {};
+
+  allStrikes.forEach(s => {
+    byFirer[s.firer] = (byFirer[s.firer] || 0) + 1;
+    byType[s.type]   = (byType[s.type]   || 0) + 1;
+    const ym = s.date ? s.date.slice(0, 7) : 'unknown';
+    byMonth[ym] = (byMonth[ym] || 0) + 1;
+  });
+
+  document.getElementById('total-count').textContent = total;
+
+  // ── Dynamic stat cards ──
+  const cardsEl = document.getElementById('stat-cards');
+  const colorKeys = ['red','amber','orange','purple','blue','green','cyan'];
+  let cardHtml = `<div class="stat-card red">
+    <div class="stat-label">TOTAL INCIDENTS</div>
+    <div class="stat-value">${total}</div>
+    <div class="stat-sub">since Oct 7, 2023</div>
+  </div>`;
+  ACTORS.forEach((actor, idx) => {
+    const count = byFirer[actor.key] || 0;
+    cardHtml += `<div class="stat-card" style="border-color:var(--border);">
+      <div style="position:absolute;top:0;left:0;width:3px;height:100%;background:${actor.color};"></div>
+      <div class="stat-label">${actor.label.toUpperCase()}</div>
+      <div class="stat-value" style="font-size:40px;">${count}</div>
+      <div class="stat-sub">${actor.hint ? actor.hint.slice(0,40) : ''}</div>
+    </div>`;
+  });
+  if (cardsEl) cardsEl.innerHTML = cardHtml;
+
+  // ── Actor bar chart ──
+  const maxA = Math.max(...Object.values(byFirer), 1);
+  const actorChartEl = document.getElementById('actor-chart');
+  if (actorChartEl) {
+    actorChartEl.innerHTML = Object.entries(byFirer)
+      .sort((a, b) => b[1] - a[1])
+      .map(([firer, count]) => {
+        const color = getColor(firer);
+        const label = getLabel(firer);
+        const pct = (count / maxA * 100).toFixed(1);
+        return `<div class="bar-row">
+          <div class="bar-name">${label}</div>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:${pct}%;background:${color};" data-count="${count}"></div>
+          </div>
+        </div>`;
+      }).join('');
+  }
+
+  // ── Type bar chart ──
+  const typeLabels = {
+    ballistic_missile:'Ballistic', cruise_missile:'Cruise',
+    rocket:'Rocket/Mortar', drone:'Drone/UAV', mixed:'Mixed Barrage'
+  };
+  const maxT = Math.max(...Object.values(byType), 1);
+  const typeChartEl = document.getElementById('type-chart');
+  if (typeChartEl) {
+    typeChartEl.innerHTML = Object.entries(byType)
+      .sort((a, b) => b[1] - a[1])
+      .map(([type, count]) => {
+        const pct = (count / maxT * 100).toFixed(1);
+        return `<div class="bar-row">
+          <div class="bar-name">${typeLabels[type] || type}</div>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:${pct}%;background:var(--cyan);" data-count="${count}"></div>
+          </div>
+        </div>`;
+      }).join('');
+  }
+
+  // ── Timeline ──
+  const months = Object.keys(byMonth).filter(m => m !== 'unknown').sort();
+  const maxM = Math.max(...Object.values(byMonth), 1);
+  const tl = document.getElementById('timeline-chart');
+  if (tl) {
+    tl.querySelectorAll('.timeline-bar').forEach(e => e.remove());
+    months.forEach(m => {
+      const c = byMonth[m];
+      const h = Math.max((c / maxM) * 130, 4);
+      const bar = document.createElement('div');
+      bar.className = 'timeline-bar';
+      bar.style.height = h + 'px';
+      bar.style.backgroundColor = `rgba(232,160,32,${0.3 + 0.7 * (c / maxM)})`;
+      bar.innerHTML = `<div class="tip">${m}: ${c} incidents</div>`;
+      tl.insertBefore(bar, document.getElementById('timeline-x'));
+    });
+    const xs = [months[0], months[Math.floor(months.length / 2)], months[months.length - 1]].filter(Boolean);
+    const xEl = document.getElementById('timeline-x');
+    if (xEl) xEl.innerHTML = xs.map(m => `<span>${m}</span>`).join('');
+  }
+
+  // ── Actor registry table ──
+  const reg = document.getElementById('actor-registry');
+  if (reg) {
+    reg.innerHTML = `<table class="actor-registry-table">
+      <thead><tr>
+        <th>COLOR</th><th>KEY</th><th>DISPLAY NAME</th>
+        <th>INCIDENTS</th><th>SEARCH HINT</th><th>ACTION</th>
+      </tr></thead>
+      <tbody>${ACTORS.map((actor, idx) => `
+        <tr>
+          <td><span class="actor-swatch" style="background:${actor.color};width:16px;height:16px;border-radius:3px;display:inline-block;"></span></td>
+          <td style="color:${actor.color};">${actor.key}</td>
+          <td>${actor.label}</td>
+          <td style="color:${actor.color};font-weight:bold;">${byFirer[actor.key] || 0}</td>
+          <td style="color:var(--text2);font-size:10px;">${actor.hint || '—'}</td>
+          <td>${DEFAULT_ACTORS.some(d => d.key === actor.key)
+            ? '<span class="actor-default-badge">DEFAULT</span>'
+            : `<button class="actor-del-btn" onclick="removeActor('${actor.key}')">✕ REMOVE</button>`
+          }</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+  }
+
+  // ── Full table ──
+  const sorted = [...allStrikes].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const fullTableEl = document.getElementById('full-table');
+  if (fullTableEl) {
+    fullTableEl.innerHTML = sorted.map(s => {
+      const color = getColor(s.firer);
+      const label = getLabel(s.firer);
+      return `<div class="table-row">
+        <div class="table-cell date">${new Date(s.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div>
+        <div class="table-cell">${s.title || ''}</div>
+        <div class="table-cell">${s.location || ''}</div>
+        <div class="table-cell"><span style="color:${color}">${label}</span></div>
+        <div class="table-cell source"><a href="${s.sourceUrl || '#'}" target="_blank">${s.source || ''}</a></div>
+      </div>`;
+    }).join('');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INTEL ENGINE — CSV via Anthropic API web_fetch tool
+// ═══════════════════════════════════════════════════════════
+
+// ── JSON helpers ──
+function extractJsonArray(raw) {
+  if (!raw) return null;
+  let depth = 0, start = -1;
+  for (let i = 0; i < raw.length; i++) {
+    if (raw[i] === '[') { if (depth === 0) start = i; depth++; }
+    else if (raw[i] === ']') {
+      depth--;
+      if (depth === 0 && start !== -1) {
+        try { return JSON.parse(raw.slice(start, i + 1)); } catch(e) { start = -1; depth = 0; }
+      }
+    }
+  }
+  return null;
+}
+function collectAllText(data) {
+  const parts = [];
+  if (Array.isArray(data.content))
+    for (const b of data.content) {
+      if (b.type === 'text' && b.text) parts.push(b.text);
+      if (b.type === 'tool_result' && Array.isArray(b.content))
+        for (const inner of b.content)
+          if (inner.type === 'text' && inner.text) parts.push(inner.text);
+    }
+  if (typeof data.text === 'string') parts.push(data.text);
+  return parts.join('\n');
+}
+
+// ── Category → weapon type ──
+function catToType(catId) {
+  const n = parseInt(catId, 10);
+  if (n === 7) return 'ballistic_missile';
+  if (n === 8) return 'cruise_missile';
+  if (n === 9 || n === 2) return 'drone';
+  return 'rocket';
+}
+
+// ── Zone → firer inference ──
+function inferFirer(locationHe, zone, dateStr) {
+  const loc = (locationHe || '').toLowerCase();
+  const z   = (zone || '').toLowerCase();
+  const d   = new Date(dateStr);
+  const isNorth = z.includes('צפון') || z.includes('גליל') || z.includes('גולן') ||
+                  z.includes('חיפה') || z.includes('עכו') ||
+                  loc.includes('קריית שמונה') || loc.includes('נהריה') || loc.includes('מטולה');
+  const isSouth = z.includes('דרום') || z.includes('עוטף') || z.includes('אשקלון') ||
+                  z.includes('שדרות') || z.includes('אשדוד') || z.includes('באר שבע');
+  const isCenter = z.includes('מרכז') || z.includes('תל אביב') || z.includes('דן') ||
+                   z.includes('ירושלים') || z.includes('שפלה') || z.includes('שרון');
+  if (isNorth) return 'hezbollah';
+  if (isSouth) return 'hamas';
+  if (isCenter) {
+    if ((d >= new Date('2024-04-13') && d <= new Date('2024-04-14')) ||
+        (d >= new Date('2024-10-01') && d <= new Date('2024-10-02'))) return 'iran';
+    return 'houthi';
+  }
+  return 'unknown';
+}
+
+// ── Settlement → coordinates ──
+const SETTLEMENT_COORDS = {
+  'שדרות':[31.524,34.596],'נתיבות':[31.423,34.591],'אשקלון':[31.669,34.571],
+  'אשדוד':[31.804,34.649],'באר שבע':[31.252,34.791],'אופקים':[31.313,34.621],
+  'תל אביב':[32.067,34.785],'רמת גן':[32.082,34.814],'בני ברק':[32.084,34.834],
+  'חולון':[32.011,34.778],'בת ים':[32.022,34.749],'פתח תקווה':[32.089,34.888],
+  'ראשון לציון':[31.972,34.789],'רחובות':[31.896,34.809],'מודיעין':[31.898,35.011],
+  'ירושלים':[31.768,35.214],'בית שמש':[31.745,34.987],
+  'חיפה':[32.815,34.989],'נהריה':[33.006,35.097],'עכו':[32.929,35.082],
+  'קריית אתא':[32.807,35.107],'קריית ביאליק':[32.833,35.088],
+  'זכרון יעקב':[32.569,34.945],
+  'קריית שמונה':[33.206,35.571],'מטולה':[33.272,35.576],'שלומי':[33.076,35.147],
+  'מעלות תרשיחא':[33.015,35.272],'צפת':[32.965,35.496],'כרמיאל':[32.915,35.297],
+  'טבריה':[32.793,35.531],'קצרין':[32.992,35.686],
+  "מג'דל שמס":[33.268,35.774],
+  'דימונה':[31.065,35.032],'אילת':[29.557,34.952],'ערד':[31.258,35.213],
+};
+const ZONE_CENTROIDS = {
+  'עוטף עזה':[31.35,34.5],'דרום':[31.1,34.8],'מרכז':[31.95,34.85],
+  'תל אביב':[32.07,34.79],'ירושלים':[31.77,35.21],'שרון':[32.2,34.9],
+  'חיפה':[32.82,34.99],'גליל עליון':[33.0,35.4],'גליל תחתון':[32.7,35.3],
+  'גולן':[33.0,35.7],'צפון':[32.9,35.3],'נגב':[31.0,34.8],
+};
+function getCoords(he, zone) {
+  if (SETTLEMENT_COORDS[he]) return SETTLEMENT_COORDS[he];
+  for (const [k,v] of Object.entries(SETTLEMENT_COORDS))
+    if (he && he.includes(k)) return v;
+  for (const [k,v] of Object.entries(ZONE_CENTROIDS))
+    if (zone && zone.includes(k)) return v;
+  return [31.5, 34.9];
+}
+
+// ── Settlement name → English ──
+const SETTLE_EN = {
+  'שדרות':'Sderot','אשקלון':'Ashkelon','אשדוד':'Ashdod','באר שבע':'Beersheba',
+  'תל אביב':'Tel Aviv','חיפה':'Haifa','ירושלים':'Jerusalem',
+  'קריית שמונה':'Kiryat Shmona','נהריה':'Nahariya','עכו':'Acre',
+  'טבריה':'Tiberias','צפת':'Safed','אילת':'Eilat','נתיבות':'Netivot',
+  'אופקים':'Ofakim','מטולה':'Metula',"מג'דל שמס":'Majdal Shams',
+  'כרמיאל':'Carmiel','דימונה':'Dimona','ערד':'Arad',
+  'ראשון לציון':'Rishon LeZion','פתח תקווה':'Petah Tikva',
+  'רמת גן':'Ramat Gan','בני ברק':"Bnei Brak",'חולון':'Holon',
+  'מודיעין':'Modi\'in','קצרין':'Katzrin',
+};
+function toEn(he) {
+  if (!he) return he;
+  for (const [k,v] of Object.entries(SETTLE_EN)) if (he.includes(k)) return v;
+  return he;
+}
+
+// ── CSV parser ──
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,''));
+  return lines.slice(1).map(line => {
+    const fields = []; let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === '"') { inQ = !inQ; continue; }
+      if (line[i] === ',' && !inQ) { fields.push(cur); cur = ''; continue; }
+      cur += line[i];
+    }
+    fields.push(cur);
+    const obj = {};
+    headers.forEach((h,i) => { obj[h] = (fields[i]||'').trim(); });
+    return obj;
+  });
+}
+
+// ── Convert CSV rows → grouped strike objects ──
+function csvRowsToStrikes(rows) {
+  const RELEVANT = new Set([1,2,7,8,9]);
+  const START = new Date('2023-10-07');
+  const groups = new Map();
+
+  rows.forEach(row => {
+    const catId = parseInt(row.category || row.category_id || '0', 10);
+    if (!RELEVANT.has(catId)) return;
+    const dateStr = (row.alertDate||'').slice(0,10);
+    if (!dateStr || new Date(dateStr) < START) return;
+
+    // data column: settlement names separated by commas with numbers, e.g. "תל אביב 3, חיפה 2"
+    const rawData = row.data || '';
+    const settlements = rawData.split(',')
+      .map(s => s.replace(/\d+/g,'').trim())
+      .filter(s => s.length > 1);
+
+    const zone = row.area || row.areaname || settlements[0] || '';
+    const key  = `${dateStr}|${catId}|${zone}`;
+
+    if (!groups.has(key)) groups.set(key, { dateStr, catId, zone, settlements: [], catDesc: row.category_desc||'' });
+    const g = groups.get(key);
+    settlements.forEach(s => { if (!g.settlements.includes(s)) g.settlements.push(s); });
+  });
+
+  let idx = 0;
+  return Array.from(groups.values()).map(g => {
+    const primary = g.settlements[0] || g.zone || '';
+    const [lat, lng] = getCoords(primary, g.zone);
+    const firer = inferFirer(primary, g.zone, g.dateStr);
+    const type  = catToType(g.catId);
+    const locEn = g.settlements.slice(0,3).map(toEn).join(', ') +
+                  (g.settlements.length > 3 ? ` +${g.settlements.length-3} more` : '');
+    const typeLabel = {ballistic_missile:'Ballistic missile',cruise_missile:'Cruise missile',
+                       rocket:'Rocket/missile',drone:'Drone',mixed:'Mixed'}[type]||type;
+    return {
+      id: `csv_${idx++}`,
+      date: g.dateStr,
+      title: `${typeLabel} alert — ${toEn(primary)||g.zone}`,
+      description: `${typeLabel} alert on ${g.dateStr} covering: ${locEn||g.zone}. Category: ${g.catDesc}.`,
+      location: locEn || g.zone,
+      lat, lng, firer, type,
+      source: 'Israel Home Front Command (dleshem/israel-alerts-data)',
+      sourceUrl: 'https://github.com/dleshem/israel-alerts-data',
+    };
+  });
+}
+
+// ── Deduplication ──
+function dedupe(incoming, existing) {
+  const seen = new Set(existing.map(s =>
+    `${s.date}|${String(s.lat).slice(0,5)}|${String(s.lng).slice(0,5)}`
+  ));
+  return incoming.filter(s => {
+    if (!s||!s.id||!s.date||s.lat==null||s.lng==null) return false;
+    const k = `${s.date}|${String(s.lat).slice(0,5)}|${String(s.lng).slice(0,5)}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+// ── Direct CSV fetch (works on GitHub Pages — real internet, no sandbox) ──
+async function fetchCSVviaAPI(csvUrl) {
+  setStatus('Downloading alert archive from GitHub…', 15);
+  const res = await fetch(csvUrl);
+  if (!res.ok) throw new Error(`CSV fetch failed: HTTP ${res.status}`);
+  const text = await res.text();
+  if (!text || text.length < 100) throw new Error('CSV file was empty or too small');
+  return text;
+}
+
+// ── Status helper ──
+function setStatus(msg, pct) {
+  const d = document.getElementById('loading-detail');
+  const p = document.getElementById('progress-fill');
+  const m = document.getElementById('map-status');
+  if (d) d.textContent = msg;
+  if (p && pct != null) p.style.width = pct + '%';
+  if (m) m.textContent = msg.toUpperCase();
+}
+
+// ── Main orchestrator ──
+async function fetchStrikes() {
+  if (!getApiKey()) { showKeyModal(); return; }
+  const btn = document.getElementById('fetch-btn');
+  btn.disabled = true;
+  document.getElementById('btn-spinner').style.display = 'inline-block';
+  document.getElementById('btn-text').textContent = 'SCANNING…';
+  document.getElementById('loading-overlay').classList.remove('hidden');
+  document.getElementById('progress-fill').style.width = '0%';
+
+  const CSV_URL = 'https://raw.githubusercontent.com/dleshem/israel-alerts-data/main/israel-alerts.csv';
+
+  try {
+    // ── Fetch CSV via API ──
+    setStatus('Fetching Israel Home Front Command alert archive via API…', 5);
+    const csvText = await fetchCSVviaAPI(CSV_URL);
+
+    setStatus(`Downloaded ${Math.round(csvText.length/1024)}KB of CSV data — parsing…`, 50);
+    const rows = parseCSV(csvText);
+
+    setStatus(`Parsed ${rows.length.toLocaleString()} alert records — grouping into incidents…`, 65);
+    const csvStrikes = csvRowsToStrikes(rows);
+
+    setStatus(`Grouped into ${csvStrikes.length.toLocaleString()} incidents — merging…`, 80);
+    const fresh = dedupe(csvStrikes, allStrikes.filter(s => !s.id.startsWith('csv_')));
+    allStrikes = [...allStrikes.filter(s => !s.id.startsWith('csv_')), ...fresh];
+
+    document.getElementById('progress-fill').style.width = '100%';
+    document.getElementById('total-count').textContent = allStrikes.length.toLocaleString();
+    document.getElementById('map-status').textContent =
+      `LOADED ${fresh.length.toLocaleString()} INCIDENTS — ${allStrikes.length.toLocaleString()} TOTAL`;
+
+    updateFilters();
+    renderStats();
+
+  } catch(err) {
+    console.error('fetchStrikes error:', err);
+    showError('Fetch error: ' + err.message);
+    document.getElementById('map-status').textContent = 'ERROR: ' + err.message.slice(0,80);
+  }
+
+  document.getElementById('loading-overlay').classList.add('hidden');
+  btn.disabled = false;
+  document.getElementById('btn-spinner').style.display = 'none';
+  document.getElementById('btn-text').textContent = '⟳ SCAN INTEL';
+}
+
+function simulateProgress() {
+  let p = 0;
+  const fill = document.getElementById('progress-fill');
+  const msgs = [
+    'Querying open-source intelligence archives…',
+    'Cross-referencing Reuters, BBC, Times of Israel…',
+    'Parsing incident locations and coordinates…',
+    'Classifying weapon types and threat actors…',
+    'Building incident database…'
+  ];
+  let mi = 0;
+  const iv = setInterval(() => {
+    p = Math.min(p + Math.random()*8, 92);
+    fill.style.width = p+'%';
+    if (mi < msgs.length && p > mi*20) {
+      document.getElementById('loading-detail').textContent = msgs[mi++];
+    }
+    if (document.getElementById('loading-overlay').classList.contains('hidden')) {
+      fill.style.width = '100%';
+      clearInterval(iv);
+    }
+  }, 350);
+}
+
+function showError(msg) {
+  const el = document.getElementById('api-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 8000);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PAGE NAVIGATION
+// ── Render dynamic firer filter buttons ──
+function renderActorButtons() {
+  const container = document.getElementById('firer-btns-container');
+  if (!container) return;
+  container.innerHTML =
+    `<button class="firer-btn ${activeFirer === 'all' ? 'active' : ''}" data-group="all"
+       style="${activeFirer === 'all' ? 'background:var(--amber);color:#000;border-color:var(--amber);' : 'border-color:var(--amber);color:var(--amber);'}"
+       onclick="setFirerFilter('all')">ALL</button>` +
+    ACTORS.map(actor => {
+      const isActive = activeFirer === actor.key;
+      return `<button class="firer-btn ${isActive ? 'active' : ''}" data-group="${actor.key}"
+        style="border-color:${actor.color};color:${isActive ? '#fff' : actor.color};${isActive ? 'background:' + actor.color + ';' : ''}"
+        onclick="setFirerFilter('${actor.key}')">${actor.label}</button>`;
+    }).join('');
+}
+
+// ── Add new actor from Overview form ──
+function addActor() {
+  const key   = document.getElementById('new-actor-key').value.trim().toLowerCase().replace(/\s+/g,'_');
+  const label = document.getElementById('new-actor-label').value.trim();
+  const color = document.getElementById('new-actor-color').value;
+  const hint  = document.getElementById('new-actor-hint').value.trim();
+  const msg   = document.getElementById('actor-add-msg');
+
+  if (!key || !label) {
+    msg.style.color = 'var(--red)'; msg.style.display = 'block';
+    msg.textContent = 'Key and display name are required.'; return;
+  }
+  if (ACTORS.some(a => a.key === key)) {
+    msg.style.color = 'var(--red)'; msg.style.display = 'block';
+    msg.textContent = `Actor key "${key}" already exists.`; return;
+  }
+
+  ACTORS.push({ key, label, color, hint });
+  saveActors();
+  renderActorButtons();
+  renderStats();
+
+  // Clear form
+  document.getElementById('new-actor-key').value = '';
+  document.getElementById('new-actor-label').value = '';
+  document.getElementById('new-actor-hint').value = '';
+  document.getElementById('new-actor-color').value = '#ff6600';
+
+  msg.style.color = 'var(--green)'; msg.style.display = 'block';
+  msg.textContent = `Actor "${label}" added! Click SCAN INTEL to fetch their incidents.`;
+  setTimeout(() => { msg.style.display = 'none'; }, 4000);
+}
+
+// ── Remove a custom actor ──
+function removeActor(key) {
+  if (DEFAULT_ACTORS.some(d => d.key === key)) return; // protect defaults
+  ACTORS = ACTORS.filter(a => a.key !== key);
+  saveActors();
+  if (activeFirer === key) { activeFirer = 'all'; }
+  renderActorButtons();
+  updateFilters();
+  renderStats();
+}
+
+// ═══════════════════════════════════════════════════════════
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelector(`.nav-tab[data-page="${name}"]`).classList.add('active');
+  if (name === 'stats') renderStats();
+  if (name === 'map') setTimeout(() => map && map.invalidateSize(), 100);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  API KEY MANAGEMENT
+// ═══════════════════════════════════════════════════════════
+
+function getApiKey() {
+  return localStorage.getItem('striketrack_apikey') || '';
+}
+
+function saveApiKey() {
+  const key = document.getElementById('apikey-field').value.trim();
+  const err = document.getElementById('apikey-err');
+  if (!key.startsWith('sk-ant-') && !key.startsWith('sk-')) {
+    err.style.display = 'block';
+    err.textContent = 'Key must start with "sk-ant-"';
+    return;
+  }
+  localStorage.setItem('striketrack_apikey', key);
+  err.style.display = 'none';
+  document.getElementById('apikey-modal').classList.add('hidden');
+  updateKeyIndicator();
+}
+
+function showKeyModal() {
+  const modal = document.getElementById('apikey-modal');
+  const field = document.getElementById('apikey-field');
+  if (field) field.value = getApiKey();
+  modal.classList.remove('hidden');
+  // Allow dismissing if key already set
+  if (getApiKey()) {
+    modal.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); };
+  }
+}
+
+function updateKeyIndicator() {
+  const key = getApiKey();
+  const dot   = document.getElementById('key-dot');
+  const label = document.getElementById('key-label');
+  if (!dot || !label) return;
+  if (key) {
+    dot.className = 'key-dot set';
+    label.textContent = 'KEY SET ✓';
+    label.style.color = 'var(--green)';
+  } else {
+    dot.className = 'key-dot';
+    label.textContent = 'NO API KEY';
+    label.style.color = 'var(--red2)';
+  }
+}
+
+// ── CORS headers required for direct browser→Anthropic calls ──
+function anthropicHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'x-api-key': getApiKey(),
+    'anthropic-version': '2023-06-01',
+    'anthropic-dangerous-direct-browser-access': 'true',
+  };
+}
+
+// ── Enter key support on the API key input ──
+document.addEventListener('DOMContentLoaded', () => {
+  const field = document.getElementById('apikey-field');
+  if (field) field.addEventListener('keydown', e => { if (e.key === 'Enter') saveApiKey(); });
+});
+
+// ═══════════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════════
+function boot() {
+  if (window._booted) return;
+  window._booted = true;
+  initMap();
+  initSlider();
+  allStrikes = [...SEED_STRIKES];
+  updateFilters();
+  renderStats();
+  renderActorButtons();
+  updateKeyIndicator();
+  // Show API key modal on first visit; hide it if key already stored
+  if (!getApiKey()) {
+    document.getElementById('apikey-modal').classList.remove('hidden');
+  } else {
+    document.getElementById('apikey-modal').classList.add('hidden');
+  }
+  document.getElementById('map-status').textContent = 'SEED DATA LOADED — CLICK "SCAN INTEL" FOR MORE';
+}
+
+// Dynamically inject libraries then boot — works in sandboxed iframes
+function loadScript(src, cb) {
+  const s = document.createElement('script');
+  s.src = src;
+  s.onload = cb;
+  s.onerror = () => { console.error('Failed to load', src); cb(); };
+  document.head.appendChild(s);
+}
+
+loadScript('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js', function() {
+  loadScript('https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js', function() {
+    boot();
+  });
+});
+</script>
+
+
+<!-- API Key Modal -->
+<div id="apikey-modal">
+  <div class="apikey-box">
+    <div class="apikey-title">⚿ API KEY REQUIRED</div>
+    <div class="apikey-sub">
+      This site requires an Anthropic API key to scan for incidents.<br>
+      Get your key at <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a><br>
+      Your key is stored only in your browser (localStorage) and never sent anywhere except Anthropic's API.
+    </div>
+    <input class="apikey-input" id="apikey-field" type="password"
+      placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false">
+    <button class="apikey-save" onclick="saveApiKey()">SAVE KEY & CONTINUE</button>
+    <div class="apikey-err" id="apikey-err">Key must start with "sk-ant-"</div>
+  </div>
+</div>
+
+</body>
+</html>
