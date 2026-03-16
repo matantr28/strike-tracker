@@ -867,70 +867,6 @@ body::before {
   .table-cell:nth-child(5) { display: none; }
 }
 
-/* ── API Key Modal ── */
-#apikey-modal {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.85);
-  z-index: 9000;
-  display: flex; align-items: center; justify-content: center;
-  backdrop-filter: blur(6px);
-}
-#apikey-modal.hidden { display: none; }
-.apikey-box {
-  background: var(--bg2);
-  border: 1px solid var(--amber);
-  padding: 36px 40px;
-  max-width: 500px; width: 90%;
-  box-shadow: 0 0 40px rgba(232,160,32,0.2);
-}
-.apikey-title {
-  font-family: var(--font-head);
-  font-weight: 900; font-size: 22px;
-  letter-spacing: 3px; color: #fff;
-  margin-bottom: 6px; text-transform: uppercase;
-}
-.apikey-sub {
-  font-family: var(--font-mono);
-  font-size: 11px; color: var(--text2);
-  margin-bottom: 20px; line-height: 1.7;
-}
-.apikey-sub a { color: var(--amber); text-decoration: none; }
-.apikey-input {
-  width: 100%; padding: 10px 14px;
-  background: var(--bg3); border: 1px solid var(--border2);
-  color: var(--text); font-family: var(--font-mono); font-size: 13px;
-  margin-bottom: 14px; letter-spacing: 1px;
-}
-.apikey-input:focus { outline: none; border-color: var(--amber); }
-.apikey-save {
-  width: 100%; padding: 12px;
-  background: var(--amber); border: none;
-  color: #000; font-family: var(--font-head);
-  font-weight: 900; font-size: 15px;
-  letter-spacing: 2px; text-transform: uppercase;
-  cursor: pointer; transition: all 0.2s;
-}
-.apikey-save:hover { background: #ffb830; }
-.apikey-err {
-  font-family: var(--font-mono); font-size: 11px;
-  color: var(--red2); margin-top: 8px; display: none;
-}
-#apikey-indicator {
-  display: flex; align-items: center; gap: 8px;
-  padding: 0 20px; cursor: pointer;
-  border-left: 1px solid var(--border);
-  height: 100%;
-}
-#apikey-indicator:hover { background: rgba(255,255,255,0.03); }
-.key-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--red2); flex-shrink: 0;
-}
-.key-dot.set { background: var(--green); }
-#apikey-indicator span {
-  font-family: var(--font-mono); font-size: 10px;
-  color: var(--text2); white-space: nowrap;
-}
 </style>
 </head>
 <body>
@@ -947,10 +883,6 @@ body::before {
   </div>
   <div class="nav-right">
     <div id="strike-counter">INCIDENTS LOADED: <span id="total-count">0</span></div>
-    <div id="apikey-indicator" onclick="showKeyModal()" title="Click to set API key">
-      <div class="key-dot" id="key-dot"></div>
-      <span id="key-label">NO API KEY</span>
-    </div>
     <button id="fetch-btn" onclick="fetchStrikes()">
       <span class="spinner" id="btn-spinner"></span>
       <span id="btn-text">⟳ SCAN INTEL</span>
@@ -1852,7 +1784,6 @@ function setStatus(msg, pct) {
 
 // ── Main orchestrator ──
 async function fetchStrikes() {
-  if (!getApiKey()) { showKeyModal(); return; }
   const btn = document.getElementById('fetch-btn');
   btn.disabled = true;
   document.getElementById('btn-spinner').style.display = 'inline-block';
@@ -2001,71 +1932,6 @@ function showPage(name) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  API KEY MANAGEMENT
-// ═══════════════════════════════════════════════════════════
-
-function getApiKey() {
-  return localStorage.getItem('striketrack_apikey') || '';
-}
-
-function saveApiKey() {
-  const key = document.getElementById('apikey-field').value.trim();
-  const err = document.getElementById('apikey-err');
-  if (!key.startsWith('sk-ant-') && !key.startsWith('sk-')) {
-    err.style.display = 'block';
-    err.textContent = 'Key must start with "sk-ant-"';
-    return;
-  }
-  localStorage.setItem('striketrack_apikey', key);
-  err.style.display = 'none';
-  document.getElementById('apikey-modal').classList.add('hidden');
-  updateKeyIndicator();
-}
-
-function showKeyModal() {
-  const modal = document.getElementById('apikey-modal');
-  const field = document.getElementById('apikey-field');
-  if (field) field.value = getApiKey();
-  modal.classList.remove('hidden');
-  // Allow dismissing if key already set
-  if (getApiKey()) {
-    modal.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); };
-  }
-}
-
-function updateKeyIndicator() {
-  const key = getApiKey();
-  const dot   = document.getElementById('key-dot');
-  const label = document.getElementById('key-label');
-  if (!dot || !label) return;
-  if (key) {
-    dot.className = 'key-dot set';
-    label.textContent = 'KEY SET ✓';
-    label.style.color = 'var(--green)';
-  } else {
-    dot.className = 'key-dot';
-    label.textContent = 'NO API KEY';
-    label.style.color = 'var(--red2)';
-  }
-}
-
-// ── CORS headers required for direct browser→Anthropic calls ──
-function anthropicHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    'x-api-key': getApiKey(),
-    'anthropic-version': '2023-06-01',
-    'anthropic-dangerous-direct-browser-access': 'true',
-  };
-}
-
-// ── Enter key support on the API key input ──
-document.addEventListener('DOMContentLoaded', () => {
-  const field = document.getElementById('apikey-field');
-  if (field) field.addEventListener('keydown', e => { if (e.key === 'Enter') saveApiKey(); });
-});
-
-// ═══════════════════════════════════════════════════════════
 //  BOOT
 // ═══════════════════════════════════════════════════════════
 function boot() {
@@ -2077,13 +1943,6 @@ function boot() {
   updateFilters();
   renderStats();
   renderActorButtons();
-  updateKeyIndicator();
-  // Show API key modal on first visit; hide it if key already stored
-  if (!getApiKey()) {
-    document.getElementById('apikey-modal').classList.remove('hidden');
-  } else {
-    document.getElementById('apikey-modal').classList.add('hidden');
-  }
   document.getElementById('map-status').textContent = 'SEED DATA LOADED — CLICK "SCAN INTEL" FOR MORE';
 }
 
@@ -2103,22 +1962,6 @@ loadScript('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js', fu
 });
 </script>
 
-
-<!-- API Key Modal -->
-<div id="apikey-modal">
-  <div class="apikey-box">
-    <div class="apikey-title">⚿ API KEY REQUIRED</div>
-    <div class="apikey-sub">
-      This site requires an Anthropic API key to scan for incidents.<br>
-      Get your key at <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a><br>
-      Your key is stored only in your browser (localStorage) and never sent anywhere except Anthropic's API.
-    </div>
-    <input class="apikey-input" id="apikey-field" type="password"
-      placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false">
-    <button class="apikey-save" onclick="saveApiKey()">SAVE KEY & CONTINUE</button>
-    <div class="apikey-err" id="apikey-err">Key must start with "sk-ant-"</div>
-  </div>
-</div>
 
 </body>
 </html>
